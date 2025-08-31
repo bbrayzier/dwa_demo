@@ -8,16 +8,19 @@ Copyright (c) 2025 Ben Brayzier
 import numpy as np
 from dataclasses import dataclass
 
+# Local imports
+from ..util import wrap_to_pi
+
 
 @dataclass
 class RoverPose:
   """Class to represent the pose (position/attitude) of the rover"""
 
   # Position in metres (x, y) coordinates
-  position_m: list[float] = [0.0, 0.0]
+  position_m: list[float]
 
   # Orientation in radians
-  heading_rad: float = 0.0
+  heading_rad: float
 
   def copy(self):
     """A method to generate a copy of the RoverPose instance"""
@@ -106,7 +109,7 @@ class RoverTrajectory:
 
         # Update the rover's heading, then use it to determine the new rover
         # position based on the radius and centre of rotation
-        rover_pose.heading_rad = (
+        rover_pose.heading_rad = wrap_to_pi(
           rover_pose.heading_rad + yaw_rate_rads_in * time_step_s_in
         )
         rover_pose.position_m[0] = cor_x_pos_m + radius_m * np.sin(
@@ -145,6 +148,10 @@ class RoverTrajectory:
 @dataclass
 class RoverLimits:
   """Class to represent the limits of the rover"""
+
+  # Minimum velocity of the rover in metres per second (for reasonable traverse
+  # speed)
+  min_velocity_ms: float
 
   # Maximum velocity of the rover in metres per second
   max_velocity_ms: float

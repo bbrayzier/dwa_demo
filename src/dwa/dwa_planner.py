@@ -10,8 +10,8 @@ from dataclasses import dataclass
 from math import ceil
 
 # Local imports
-from . import RoverState, RoverTrajectory, RoverLimits
-from ..util import wrap_to_pi
+from .rover_data import RoverState, RoverTrajectory, RoverLimits
+from ..util import wrap_to_pi, euclidean_distance
 
 
 @dataclass
@@ -49,8 +49,8 @@ class DwaConfig:
   # The resolution of the velocity search space in metres per second
   velocity_resolution_ms: float
 
-  # The resolution of the yaw rate search space in metres per second
-  yaw_rate_resolution_ms: float
+  # The resolution of the yaw rate search space in radians per second
+  yaw_rate_resolution_rads: float
 
   # The time horizon for simulating trajectories in seconds
   time_horizon_s: float
@@ -107,7 +107,7 @@ class DwaPlanner:
     # Calculate the min and max velocities and yaw rates based on current
     # velocity and acceleration limits
     min_velocity_ms = max(
-      0,
+      self.rover_limits.min_velocity_ms,
       rover_state_in.velocity_ms
       - self.rover_limits.max_accel_mss * self.dwa_config.time_step_s,
     )
@@ -143,7 +143,7 @@ class DwaPlanner:
     )
     num_yaw_rates = ceil(
       (max_yaw_rate_rads - min_yaw_rate_rads)
-      / self.dwa_config.yaw_rate_resolution_ms
+      / self.dwa_config.yaw_rate_resolution_rads
     )
     possible_yaw_rates_rads = np.linspace(
       min_yaw_rate_rads,
@@ -306,10 +306,7 @@ class DwaPlanner:
       for obstacle in obstacles_in:
         # Calculate the Euclidean distance from the pose to the obstacle
         distance_m = (
-          np.hypot(
-            pose.position_m[0] - obstacle.position_m[0],
-            pose.position_m[1] - obstacle.position_m[1],
-          )
+          euclidean_distance(pose.position_m, obstacle.position_m)
           - obstacle.radius_m
         )
 
