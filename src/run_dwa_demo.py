@@ -15,11 +15,14 @@ from .dwa import (
 )
 from .util import euclidean_distance
 
+# ---- CONSTANTS ----
+SIM_TIME_LIMIT_S = 600.0
 
-def main():
+
+def run_dwa_demo():
   # Define rover limits
   rover_limits = RoverLimits(
-    min_velocity_ms=0.15,
+    min_velocity_ms=0.1,
     max_velocity_ms=0.3,
     max_accel_mss=0.15,
     max_yaw_rate_rads=0.2,
@@ -54,13 +57,21 @@ def main():
   )
 
   # Set target position and tolerance
-  target_position_m = [5.0, 5.0]
+  target_position_m = [20.0, 0.0]
   target_tolerance_m = 0.1
 
   # Main loop for planning trajectories
   target_reached = False
   time_s = 0.0
   while not target_reached:
+    # Increment the simulation time
+    time_s += dwa_config.time_step_s
+
+    # Check for time limit exceeded
+    if time_s > SIM_TIME_LIMIT_S:
+      print('Time limit exceeded, stopping simulation.')
+      break
+
     # Compute possible trajectories based on current rover state
     trajectories = dwa_planner.compute_trajectories(rover_state)
 
@@ -79,9 +90,6 @@ def main():
       yaw_rate_rads=best_trajectory.yaw_rate_rads,
     )
 
-    # Increment the simulation time
-    time_s += dwa_config.time_step_s
-
     # Print the rover state for debugging
     print(
       f'Time: {time_s:.1f}s, Position: {rover_state.pose.position_m}, '
@@ -99,5 +107,6 @@ def main():
       target_reached = True
 
 
+# Handle direct execution of this script
 if __name__ == '__main__':
-  main()
+  run_dwa_demo()
