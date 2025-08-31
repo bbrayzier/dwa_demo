@@ -1,6 +1,6 @@
 # Dynamic Window Approach Trajectory Planner
 
-This project implements a trajectory planner for roverics using the Dynamic Window Approach (DWA). The DWA is a popular method for real-time trajectory planning that considers the rover's dynamics and the environment to generate feasible trajectories.
+This project implements a trajectory planner for rovers using the Dynamic Window Approach (DWA). The DWA is a popular method for real-time trajectory planning that considers the rover's dynamics and the environment to generate feasible trajectories.
 
 ## Overview
 
