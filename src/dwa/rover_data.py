@@ -6,7 +6,7 @@ Copyright (c) 2025 Ben Brayzier
 
 # Generic imports
 import numpy as np
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 # Local imports
 from ..util import wrap_to_pi
@@ -17,10 +17,10 @@ class RoverPose:
   """Class to represent the pose (position/attitude) of the rover"""
 
   # Position in metres (x, y) coordinates
-  position_m: list[float]
+  position_m: list[float] = field(default_factory=[0.0, 0.0].copy)
 
   # Orientation in radians
-  heading_rad: float
+  heading_rad: float = 0.0
 
   def copy(self):
     """A method to generate a copy of the RoverPose instance"""
@@ -86,14 +86,14 @@ class RoverTrajectory:
     # Copy the initial rover pose to avoid modifying the input
     rover_pose = initial_rover_pose_in.copy()
 
-    # Initialise simulation time to zero and set up the trajectory as an empty
-    # list of RoverPose objects
-    time_s = 0.0
+    # Determine the number of time steps to simulate within the time horizon
+    num_time_steps = int(time_horizon_s_in / time_step_s_in)
+
+    # Set up the trajectory as an empty list of RoverPose objects
     poses = list[RoverPose]()
 
-    # Simulate for a fixed duration, recording the rover's position at each
-    # time step
-    while time_s < time_horizon_s_in:
+    # Loop through simulation, recording the rover's position at each time step
+    for _ in range(num_time_steps):
       # Calculate the new pose based on the current pose, velocity and yaw rate
       if abs(yaw_rate_rads_in) > 1e-6:
         # If there is a yaw rate, calculate the new position using a circular
@@ -133,9 +133,6 @@ class RoverTrajectory:
 
       # Append the updated pose to the list of poses defining the trajectory
       poses.append(rover_pose.copy())
-
-      # Increment the simulation time by the time step
-      time_s += time_step_s_in
 
     # At the end of simulation, return the generated trajectory
     return cls(

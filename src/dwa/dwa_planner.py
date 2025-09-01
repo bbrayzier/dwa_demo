@@ -171,7 +171,7 @@ class DwaPlanner:
     self,
     trajectories_in: list[RoverTrajectory],
     target_pos_m_in: list[float],
-    obstacles_in: list[DwaObstacle] = [],
+    obstacles_in: list[DwaObstacle] | None = None,
   ) -> RoverTrajectory:
     """Select the best trajectory from a list of possible trajectories
 
@@ -183,12 +183,22 @@ class DwaPlanner:
         trajectories_in (list[RoverTrajectory]): List of possible rover
             trajectories.
         target_pos_m_in (list[float]): The target position [x, y].
-        obstacles_in (list[DwaObstacle], optional): List of obstacles in the
-            environment. Defaults to [].
+        obstacles_in (list[DwaObstacle] | None, optional): List of obstacles in
+            the environment. Defaults to None.
+
+    Raises:
+        ValueError: If no trajectories are provided or target position is
+            invalid.
 
     Returns:
         RoverTrajectory: The best trajectory based on the scoring function.
     """
+    # Sanity check inputs
+    if len(trajectories_in) == 0:
+      raise ValueError('No trajectories provided to select from')
+    elif len(target_pos_m_in) < 2:
+      raise ValueError('Target position must be a list of [x, y] coordinates')
+
     # Evaluate the cost of each trajectory
     trajectory_costs = [
       self._evaluate_trajectory(
@@ -206,16 +216,16 @@ class DwaPlanner:
     self,
     trajectory: RoverTrajectory,
     target_pos_m_in: list[float],
-    obstacles_in: list[DwaObstacle] = [],
+    obstacles_in: list[DwaObstacle] | None = None,
   ) -> float:
     """Evaluate a trajectory based on heading, velocity and obstacle costs
 
     Args:
         trajectory (RoverTrajectory): The trajectory to evaluate.
         target_pos_m_in (list[float]): The target position [x, y].
-        obstacles_in (list[DwaObstacle], optional): List of obstacles in the
-            environment. Obstacle cost is skipped if no obstacles are provided.
-            Defaults to [].
+        obstacles_in (list[DwaObstacle] | None, optional): List of obstacles in
+            the environment. Obstacle cost is skipped if no obstacles are
+            provided. Defaults to None.
 
     Returns:
         float: The total cost of the trajectory (lower is better).
@@ -227,10 +237,10 @@ class DwaPlanner:
     #   further away, infinite if collision, skip if no obstacles)
     heading_cost = self._calc_heading_cost(trajectory, target_pos_m_in)
     velocity_cost = self._calc_velocity_cost(trajectory)
-    if len(obstacles_in) > 0:
-      obstacle_cost = self._calc_obstacle_cost(trajectory, obstacles_in)
-    else:
+    if obstacles_in is None or len(obstacles_in) == 0:
       obstacle_cost = 0.0
+    else:
+      obstacle_cost = self._calc_obstacle_cost(trajectory, obstacles_in)
 
     # If the obstacle cost is infinite, return infinite cost (invalid
     # trajectory)

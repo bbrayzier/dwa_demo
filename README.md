@@ -9,27 +9,32 @@ The DWA algorithm computes possible trajectories based on the rover's current st
 ## Project Structure
 
 ```
-dwa_trajectory_planner
+dwa_demo
 ├── src
-│   ├── main.py               # Entry point of the application
-│   ├── planner
-│   │   └── dwa.py            # Implementation of the DWA class
-│   ├── utils
-│   │   └── math_utils.py      # Utility functions for mathematical operations
+│   ├── run_dwa_demo.py       # Entry point of the demo application
+│   ├── dwa
+│   │   ├── dwa_planner.py    # Implementation of the DWA trajectory planner
+│   │   └── rover_data.py     # Classes related to the rover
+│   ├── util
+│   │   └── math.py           # Utility functions for mathematical operations
 │   └── tests
-│       └── test_dwa.py       # Unit tests for the DWA class
-├── requirements.txt           # Project dependencies
-└── README.md                  # Project documentation
+│       └── test_dwa.py       # :warning: Placeholder file for unit tests
+├── pyproject.toml            # Project dependencies and build configuration
+└── README.md                 # Project documentation
 ```
 
 ## Setup
 
-To set up the project, clone the repository and install the required dependencies:
+First make sure you have [uv](https://docs.astral.sh/uv/getting-started/installation/)
+installed.
+
+Then to set up the project, clone the repository and install the required
+dependencies:
 
 ```bash
 git clone <repository-url>
-cd dwa_trajectory_planner
-pip install -r requirements.txt
+cd dwa_demo
+uv sync
 ```
 
 ## Usage
@@ -37,13 +42,11 @@ pip install -r requirements.txt
 To run the trajectory planner, execute the following command:
 
 ```bash
-python src/main.py
+uv run -m src.run_dwa_demo
 ```
 
 ## Examples
 
-The project includes examples of how to use the DWA class and its methods. Refer to the `src/tests/test_dwa.py` file for unit tests that demonstrate the functionality of the DWA implementation.
-
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request for any enhancements or bug fixes.
+The project includes examples of how to use the DWA class and its methods. Refer
+ to the `src/tests/test_dwa.py` file for unit tests that demonstrate the
+ functionality of the DWA implementation.
