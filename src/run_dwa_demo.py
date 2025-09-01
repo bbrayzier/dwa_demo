@@ -4,6 +4,9 @@ rover to a target position.
 Copyright (c) 2025 Ben Brayzier
 """
 
+# Generic imports
+import plotly.graph_objects as go
+
 # Local imports
 from .dwa import (
   DwaPlanner,
@@ -12,6 +15,7 @@ from .dwa import (
   RoverState,
   RoverLimits,
   RoverPose,
+  RoverTrajectory,
 )
 from .util import euclidean_distance
 
@@ -56,9 +60,12 @@ def run_dwa_demo():
     yaw_rate_rads=0.0,
   )
 
+  # Set up list of Plotly frames for animation
+  dwa_frames = list[go.Frame]()
+
   # Set target position and tolerance
-  target_position_m = [20.0, 0.0]
-  target_tolerance_m = 0.1
+  target_position_m = [5.0, -15.0]
+  target_tolerance_m = 0.5
 
   # Main loop for planning trajectories
   target_reached = False
@@ -90,12 +97,23 @@ def run_dwa_demo():
       yaw_rate_rads=best_trajectory.yaw_rate_rads,
     )
 
+    # Create a Plotly frame for the current time step
+    dwa_frames.append(
+      create_dwa_frame(
+        trajectories_in=trajectories,
+        best_trajectory_in=best_trajectory,
+        time_s=time_s,
+      )
+    )
+
     # Print the rover state for debugging
     print(
-      f'Time: {time_s:.1f}s, Position: {rover_state.pose.position_m}, '
-      f'Heading: {rover_state.pose.heading_rad:.2f} rad, '
-      f'Velocity: {rover_state.velocity_ms:.2f} m/s, '
-      f'Yaw Rate: {rover_state.yaw_rate_rads:.2f} rad/s',
+      f'Time / s: {time_s:6.1f}, '
+      f'Position / m: [{rover_state.pose.position_m[0]:6.2f}, '
+      f'{rover_state.pose.position_m[1]:6.2f}], '
+      f'Heading / rad: {rover_state.pose.heading_rad:5.2f}, '
+      f'Velocity / m/s: {rover_state.velocity_ms:5.2f}, '
+      f'Yaw Rate / rad/s: {rover_state.yaw_rate_rads:5.2f}',
     )
 
     # Break the loop if the rover is within the target tolerance
@@ -105,6 +123,69 @@ def run_dwa_demo():
     ):
       print('Target reached!')
       target_reached = True
+
+  # Create the Plotly figure and save to HTML
+  fig = go.Figure(
+    data=dwa_frames[0].data,
+    layout=go.Layout(
+      xaxis=dict(range=[-5, 10], autorange=False),
+      yaxis=dict(range=[-20, 5], autorange=False),
+      title=dict(text='DWA Demo', x=0.5),
+      updatemenus=[
+        dict(
+          type='buttons',
+          buttons=[dict(label='Play', method='animate', args=[None])],
+        )
+      ],
+    ),
+    frames=dwa_frames,
+  )
+  fig.write_html('dwa_demo.html', include_plotlyjs='cdn')
+
+
+def create_dwa_frame(
+  trajectories_in: list[RoverTrajectory],
+  best_trajectory_in: RoverTrajectory,
+  time_s: float,
+) -> go.Frame:
+  """Create a Plotly frame showing the DWA trajectories and the best trajectory.
+
+  Args:
+      trajectories_in (list[RoverTrajectory]): List of all computed
+          trajectories.
+      best_trajectory_in (RoverTrajectory): The selected best trajectory.
+      time_s (float): The current simulation time in seconds.
+
+  Returns:
+      go.Frame: A Plotly frame containing the trajectory visualisations.
+  """
+  # Create traces for all trajectories
+  trajectory_traces = list[go.Scatter]()
+  for trajectory in trajectories_in:
+    trajectory_traces.append(
+      go.Scatter(
+        x=[pose.position_m[0] for pose in trajectory.poses],
+        y=[pose.position_m[1] for pose in trajectory.poses],
+        mode='lines',
+        line=dict(color='blue', width=1),
+        name='Trajectory',
+        showlegend=False,
+      )
+    )
+
+  # Create trace for the best trajectory
+  best_trajectory_trace = go.Scatter(
+    x=[pose.position_m[0] for pose in best_trajectory_in.poses],
+    y=[pose.position_m[1] for pose in best_trajectory_in.poses],
+    mode='lines+markers',
+    line=dict(color='red', width=2),
+    marker=dict(size=6),
+    name='Best Trajectory',
+  )
+
+  # Combine all traces into a single frame
+  all_traces = trajectory_traces + [best_trajectory_trace]
+  return go.Frame(data=all_traces, name=f'Time {time_s:.1f}s')
 
 
 # Handle direct execution of this script
