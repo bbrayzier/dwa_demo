@@ -12,6 +12,7 @@ from .dwa import (
   DwaPlanner,
   DwaConfig,
   DwaCostWeights,
+  DwaObstacle,
   RoverState,
   RoverLimits,
   RoverPose,
@@ -67,6 +68,11 @@ def run_dwa_demo():
   target_position_m = [5.0, -15.0]
   target_tolerance_m = 0.5
 
+  # Set up a list of obstacles
+  obstacles = [
+    DwaObstacle(position_m=[5.0, -10.0], radius_m=0.5),
+  ]
+
   # Main loop for planning trajectories
   target_reached = False
   time_s = 0.0
@@ -86,7 +92,7 @@ def run_dwa_demo():
     best_trajectory = dwa_planner.select_best_trajectory(
       trajectories_in=trajectories,
       target_pos_m_in=target_position_m,
-      obstacles_in=[],
+      obstacles_in=obstacles,
     )
 
     # Update the rover state to the first pose in the best trajectory (i.e the
@@ -102,6 +108,7 @@ def run_dwa_demo():
       create_dwa_frame(
         trajectories_in=trajectories,
         best_trajectory_in=best_trajectory,
+        obstacles_in=obstacles,
         time_s=time_s,
       )
     )
@@ -126,10 +133,12 @@ def run_dwa_demo():
 
   # Create the Plotly figure and save to HTML
   fig = go.Figure(
-    data=dwa_frames[0].data,
+    data=max([frame.data for frame in dwa_frames], key=len),
     layout=go.Layout(
       xaxis=dict(range=[-5, 10], autorange=False),
-      yaxis=dict(range=[-20, 5], autorange=False),
+      yaxis=dict(
+        range=[-20, 5], autorange=False, scaleanchor='x', scaleratio=1
+      ),
       title=dict(text='DWA Demo', x=0.5),
       updatemenus=[
         dict(
@@ -146,6 +155,7 @@ def run_dwa_demo():
 def create_dwa_frame(
   trajectories_in: list[RoverTrajectory],
   best_trajectory_in: RoverTrajectory,
+  obstacles_in: list[DwaObstacle],
   time_s: float,
 ) -> go.Frame:
   """Create a Plotly frame showing the DWA trajectories and the best trajectory.
@@ -154,15 +164,16 @@ def create_dwa_frame(
       trajectories_in (list[RoverTrajectory]): List of all computed
           trajectories.
       best_trajectory_in (RoverTrajectory): The selected best trajectory.
+      obstacles_in (list[DwaObstacle]): List of obstacles to plot.
       time_s (float): The current simulation time in seconds.
 
   Returns:
       go.Frame: A Plotly frame containing the trajectory visualisations.
   """
-  # Create traces for all trajectories
-  trajectory_traces = list[go.Scatter]()
+  # Create traces for all trajectories and obstacles
+  traces = list[go.Scatter]()
   for trajectory in trajectories_in:
-    trajectory_traces.append(
+    traces.append(
       go.Scatter(
         x=[pose.position_m[0] for pose in trajectory.poses],
         y=[pose.position_m[1] for pose in trajectory.poses],
@@ -182,10 +193,21 @@ def create_dwa_frame(
     marker=dict(size=6),
     name='Best Trajectory',
   )
+  traces.append(best_trajectory_trace)
+
+  # Create traces for obstacles
+  for obstacle in obstacles_in:
+    obstacle_trace = go.Scatter(
+      x=[obstacle.position_m[0]],
+      y=[obstacle.position_m[1]],
+      mode='markers',
+      marker=dict(size=20 * obstacle.radius_m, color='black', symbol='x'),
+      name='Obstacle',
+    )
+    traces.append(obstacle_trace)
 
   # Combine all traces into a single frame
-  all_traces = trajectory_traces + [best_trajectory_trace]
-  return go.Frame(data=all_traces, name=f'Time {time_s:.1f}s')
+  return go.Frame(data=traces, name=f'Time {time_s:.1f}s')
 
 
 # Handle direct execution of this script
