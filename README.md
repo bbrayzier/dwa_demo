@@ -47,6 +47,7 @@ uv run -m src.run_dwa_demo
 
 ## Examples
 
-The project includes examples of how to use the DWA class and its methods. Refer
- to the `src/tests/test_dwa.py` file for unit tests that demonstrate the
- functionality of the DWA implementation.
+Running the project in its current state will generate an animation like
+this:
+
+![DWA Demo](assets/dwa_demo.gif)

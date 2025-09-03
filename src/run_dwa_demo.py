@@ -6,6 +6,8 @@ Copyright (c) 2025 Ben Brayzier
 
 # Generic imports
 import plotly.graph_objects as go
+import gif
+
 
 # Local imports
 from .dwa import (
@@ -24,7 +26,25 @@ from .util import euclidean_distance
 SIM_TIME_LIMIT_S = 600.0
 
 
-def run_dwa_demo():
+def run_dwa_demo() -> None:
+  """Run a simple DWA demo, navigating a rover to a target position while
+  avoiding obstacles.
+
+  The demo generates a GIF showing the rover's planned trajectories at each time
+  step.
+  """
+  # ---- VISUALISATION SETUP ----
+  # Set up list of Plotly frames for animation
+  dwa_frames: list[go.Figure] = []
+
+  # Configure gif options for Plotly
+  gif.options.plotly['width'] = 1000
+  gif.options.plotly['height'] = 1000
+
+  # Set up axis limits for plotly figure
+  x_lim_m = (-7.5, 12.5)
+  y_lim_m = (-17.5, 2.5)
+
   # Define rover limits
   rover_limits = RoverLimits(
     min_velocity_ms=0.1,
@@ -34,6 +54,7 @@ def run_dwa_demo():
     max_yaw_accel_radss=0.04,
   )
 
+  # ---- DWA SETUP ----
   # Define DWA configuration
   dwa_config = DwaConfig(
     velocity_resolution_ms=0.01,
@@ -43,8 +64,8 @@ def run_dwa_demo():
     obstacle_margin_m=0.3,
     cost_weights=DwaCostWeights(
       heading_cost_factor=1.0,
-      velocity_cost_factor=1.0,
-      obstacle_cost_factor=1.0,
+      velocity_cost_factor=10.0,
+      obstacle_cost_factor=15.0,
     ),
   )
 
@@ -61,18 +82,20 @@ def run_dwa_demo():
     yaw_rate_rads=0.0,
   )
 
-  # Set up list of Plotly frames for animation
-  dwa_frames = list[go.Frame]()
-
+  # ---- TARGET AND OBSTACLES SETUP ----
   # Set target position and tolerance
   target_position_m = [5.0, -15.0]
   target_tolerance_m = 0.5
 
   # Set up a list of obstacles
   obstacles = [
-    DwaObstacle(position_m=[5.0, -10.0], radius_m=0.5),
+    DwaObstacle(position_m=[5.0, -5.0], radius_m=0.5),
+    DwaObstacle(position_m=[2.5, -7.0], radius_m=1.0),
+    DwaObstacle(position_m=[5.0, -10.0], radius_m=0.8),
+    DwaObstacle(position_m=[2.5, -11.0], radius_m=0.5),
   ]
 
+  # ---- SIMULATION LOOP ----
   # Main loop for planning trajectories
   target_reached = False
   time_s = 0.0
@@ -109,7 +132,10 @@ def run_dwa_demo():
         trajectories_in=trajectories,
         best_trajectory_in=best_trajectory,
         obstacles_in=obstacles,
-        time_s=time_s,
+        target_pos_m_in=target_position_m,
+        x_lim_m_in=x_lim_m,
+        y_lim_m_in=y_lim_m,
+        time_s_in=time_s,
       )
     )
 
@@ -131,33 +157,27 @@ def run_dwa_demo():
       print('Target reached!')
       target_reached = True
 
-  # Create the Plotly figure and save to HTML
-  fig = go.Figure(
-    data=max([frame.data for frame in dwa_frames], key=len),
-    layout=go.Layout(
-      xaxis=dict(range=[-5, 10], autorange=False),
-      yaxis=dict(
-        range=[-20, 5], autorange=False, scaleanchor='x', scaleratio=1
-      ),
-      title=dict(text='DWA Demo', x=0.5),
-      updatemenus=[
-        dict(
-          type='buttons',
-          buttons=[dict(label='Play', method='animate', args=[None])],
-        )
-      ],
-    ),
+  # ---- GIF CREATION ----
+  # Convert the list of figures into a GIF, duration between frames is specified
+  # in milliseconds so set to 100x time step to give an effective duration of
+  # 100th the DWA time step (i.e. speed up the animation by 100x)
+  gif.save(
     frames=dwa_frames,
+    path='dwa_demo.gif',
+    duration=int(dwa_config.time_step_s * 10),
   )
-  fig.write_html('dwa_demo.html', include_plotlyjs='cdn')
 
 
+@gif.frame
 def create_dwa_frame(
   trajectories_in: list[RoverTrajectory],
   best_trajectory_in: RoverTrajectory,
   obstacles_in: list[DwaObstacle],
-  time_s: float,
-) -> go.Frame:
+  target_pos_m_in: list[float] | None = None,
+  x_lim_m_in: tuple[float, float] = (-5.0, 5.0),
+  y_lim_m_in: tuple[float, float] = (-5.0, 5.0),
+  time_s_in: float | None = None,
+) -> go.Figure:
   """Create a Plotly frame showing the DWA trajectories and the best trajectory.
 
   Args:
@@ -165,49 +185,105 @@ def create_dwa_frame(
           trajectories.
       best_trajectory_in (RoverTrajectory): The selected best trajectory.
       obstacles_in (list[DwaObstacle]): List of obstacles to plot.
-      time_s (float): The current simulation time in seconds.
+      target_pos_m_in (list[float], optional): Target position to plot. If
+          not provided, the target will not be shown. Defaults to None.
+      x_lim_m_in (tuple[float, float], optional): X-axis limits in metres.
+          Defaults to (-5.0, 5.0).
+      y_lim_m_in (tuple[float, float], optional): Y-axis limits in metres.
+          Defaults to (-5.0, 5.0).
+      time_s_in (float): The current simulation time in seconds. Optional, if
+          not provided the time will not be shown in the title. Defaults to
+          None.
 
   Returns:
-      go.Frame: A Plotly frame containing the trajectory visualisations.
+      go.Figure: A Plotly figure containing the trajectorys and obstacles.
   """
+  # Assemble title for the frame
+  title_text = 'DWA Demo'
+  if time_s_in is not None:
+    title_text += f'   |   Time: {time_s_in:6.1f} s'
+
   # Create traces for all trajectories and obstacles
-  traces = list[go.Scatter]()
-  for trajectory in trajectories_in:
+  traces = [
+    go.Scatter(
+      x=[pose.position_m[0] for pose in trajectory.poses],
+      y=[pose.position_m[1] for pose in trajectory.poses],
+      mode='lines',
+      line=dict(color='royalblue', width=1),
+      name='Assessed Trajectories',
+      showlegend=False,
+    )
+    for trajectory in trajectories_in
+  ]
+  # Show legend for the first trajectory only
+  traces[0].showlegend = True
+
+  # Create trace for the best trajectory
+  traces.append(
+    go.Scatter(
+      x=[pose.position_m[0] for pose in best_trajectory_in.poses],
+      y=[pose.position_m[1] for pose in best_trajectory_in.poses],
+      mode='lines',
+      line=dict(color='orangered', width=2),
+      marker=dict(size=6),
+      name='Best Trajectory',
+    )
+  )
+
+  # Create trace for the target position if provided
+  if target_pos_m_in is not None:
     traces.append(
       go.Scatter(
-        x=[pose.position_m[0] for pose in trajectory.poses],
-        y=[pose.position_m[1] for pose in trajectory.poses],
-        mode='lines',
-        line=dict(color='blue', width=1),
-        name='Trajectory',
-        showlegend=False,
+        x=[target_pos_m_in[0]],
+        y=[target_pos_m_in[1]],
+        mode='markers',
+        marker=dict(size=12, color='lightgreen', symbol='x'),
+        name='Target Position',
       )
     )
 
-  # Create trace for the best trajectory
-  best_trajectory_trace = go.Scatter(
-    x=[pose.position_m[0] for pose in best_trajectory_in.poses],
-    y=[pose.position_m[1] for pose in best_trajectory_in.poses],
-    mode='lines+markers',
-    line=dict(color='red', width=2),
-    marker=dict(size=6),
-    name='Best Trajectory',
+  # Create the Plotly figure from the trajectory traces and set the layout
+  fig = go.Figure(
+    data=traces,
+    layout=go.Layout(
+      xaxis=dict(range=x_lim_m_in, title='X / m'),
+      yaxis=dict(
+        range=y_lim_m_in, scaleanchor='x', scaleratio=1, title='Y / m'
+      ),
+      title=dict(text=title_text, x=0.5),
+      autosize=False,
+      width=1600,
+      height=1000,
+      template='plotly_dark',
+      plot_bgcolor='#474747',
+      legend=dict(
+        orientation='h',
+        yanchor='bottom',
+        y=1.01,
+        xanchor='center',
+        x=0.5,
+      ),
+    ),
   )
-  traces.append(best_trajectory_trace)
 
-  # Create traces for obstacles
-  for obstacle in obstacles_in:
-    obstacle_trace = go.Scatter(
-      x=[obstacle.position_m[0]],
-      y=[obstacle.position_m[1]],
-      mode='markers',
-      marker=dict(size=20 * obstacle.radius_m, color='black', symbol='x'),
-      name='Obstacle',
+  # Add shapes for obstacles, only show legend for the first obstacle
+  for idx, obstacle in enumerate(obstacles_in):
+    fig.add_shape(
+      type='circle',
+      xref='x',
+      yref='y',
+      x0=obstacle.position_m[0] - obstacle.radius_m,
+      y0=obstacle.position_m[1] - obstacle.radius_m,
+      x1=obstacle.position_m[0] + obstacle.radius_m,
+      y1=obstacle.position_m[1] + obstacle.radius_m,
+      line=dict(color='slateblue'),
+      fillcolor='darkslateblue',
+      name='Obstacles',
+      showlegend=(idx == 0),
     )
-    traces.append(obstacle_trace)
 
-  # Combine all traces into a single frame
-  return go.Frame(data=traces, name=f'Time {time_s:.1f}s')
+  # Return the created frame as a figure
+  return fig
 
 
 # Handle direct execution of this script
