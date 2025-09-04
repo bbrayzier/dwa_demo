@@ -50,3 +50,7 @@ uv run -m src.run_dwa_demo
 The project includes examples of how to use the DWA class and its methods. Refer
  to the `src/tests/test_dwa.py` file for unit tests that demonstrate the
  functionality of the DWA implementation.
+
+## License
+
+See the [LICENSE](LICENSE.md) file for license rights and limitations ([MIT](https://opensource.org/license/MIT)).
