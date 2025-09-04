@@ -20,10 +20,10 @@ from .dwa.dwa_animation import DwaAnimation
 from .util import euclidean_distance
 
 # ---- CONSTANTS ----
-SIM_TIME_LIMIT_S = 600.0
+SIM_TIME_LIMIT_S = 300.0
 
 
-def run_dwa_demo() -> None:
+def run_dwa_demo(enable_animation_flag_in: bool = True) -> None:
   """Run a simple DWA demo, navigating a rover to a target position while
   avoiding obstacles.
 
@@ -31,11 +31,12 @@ def run_dwa_demo() -> None:
   step.
   """
   # ---- VISUALISATION SETUP ----
-  # Set up list of Plotly frames for animation
-  animation = DwaAnimation(
-    x_lim_m_in=(-7.5, 12.5),
-    y_lim_m_in=(-17.5, 2.5),
-  )
+  if enable_animation_flag_in == True:
+    # Set up list of Plotly frames for animation
+    animation = DwaAnimation(
+      x_lim_m_in=(-7.5, 12.5),
+      y_lim_m_in=(-17.5, 2.5),
+    )
 
   # ---- ROVER SETUP ----
   # Define rover's velocity and acceleration limits
@@ -57,8 +58,8 @@ def run_dwa_demo() -> None:
     obstacle_margin_m=0.3,
     cost_weights=DwaCostWeights(
       heading_cost_factor=1.0,
-      velocity_cost_factor=10.0,
-      obstacle_cost_factor=15.0,
+      velocity_cost_factor=50.0,
+      obstacle_cost_factor=10.0,
     ),
   )
 
@@ -78,7 +79,7 @@ def run_dwa_demo() -> None:
   # ---- TARGET AND OBSTACLES SETUP ----
   # Set target position and tolerance
   target_position_m = [5.0, -15.0]
-  target_tolerance_m = 0.5
+  target_tolerance_m = 0.3
 
   # Set up a list of obstacles
   obstacles = [
@@ -119,14 +120,15 @@ def run_dwa_demo() -> None:
       yaw_rate_rads=best_trajectory.yaw_rate_rads,
     )
 
-    # Add a frame for the current time step to the animation
-    animation.add_frame(
-      trajectories_in=trajectories,
-      best_trajectory_in=best_trajectory,
-      obstacles_in=obstacles,
-      target_pos_m_in=target_position_m,
-      time_s_in=time_s,
-    )
+    if enable_animation_flag_in == True:
+      # Add a frame for the current time step to the animation
+      animation.add_frame(
+        trajectories_in=trajectories,
+        best_trajectory_in=best_trajectory,
+        obstacles_in=obstacles,
+        target_pos_m_in=target_position_m,
+        time_s_in=time_s,
+      )
 
     # Print the rover state for debugging
     print(
@@ -138,17 +140,22 @@ def run_dwa_demo() -> None:
       f'Yaw Rate / rad/s: {rover_state.yaw_rate_rads:5.2f}',
     )
 
-    # Break the loop if the rover is within the target tolerance
+    # Break the loop if the final position of the selected trajectory is within
+    # the target tolerance
     if (
-      euclidean_distance(rover_state.pose.position_m, target_position_m)
+      euclidean_distance(
+        best_trajectory.poses[-1].position_m, target_position_m
+      )
       < target_tolerance_m
     ):
       print('Target reached!')
       target_reached = True
 
   # ---- GIF CREATION ----
-  # Save the animation as a GIF
-  animation.save_gif('dwa_demo.gif')
+
+  if enable_animation_flag_in == True:
+    # Save the animation as a GIF
+    animation.save_gif('dwa_demo.gif')
 
 
 # Handle direct execution of this script
