@@ -20,7 +20,7 @@ from .rover_data import RoverTrajectory
 def create_dwa_frame(
   trajectories_in: list[RoverTrajectory],
   best_trajectory_in: RoverTrajectory,
-  obstacles_in: list[DwaObstacle],
+  obstacles_in: list[DwaObstacle] | None = None,
   target_pos_m_in: list[float] | None = None,
   x_lim_m_in: tuple[float, float] = (-5.0, 5.0),
   y_lim_m_in: tuple[float, float] = (-5.0, 5.0),
@@ -32,7 +32,8 @@ def create_dwa_frame(
       trajectories_in (list[RoverTrajectory]): List of all computed
           trajectories.
       best_trajectory_in (RoverTrajectory): The selected best trajectory.
-      obstacles_in (list[DwaObstacle]): List of obstacles to plot.
+      obstacles_in (list[DwaObstacle] | None, optional): List of obstacles to
+          plot. Defaults to None.
       target_pos_m_in (list[float], optional): Target position to plot. If
           not provided, the target will not be shown. Defaults to None.
       x_lim_m_in (tuple[float, float], optional): X-axis limits in metres.
@@ -43,9 +44,18 @@ def create_dwa_frame(
           not provided the time will not be shown in the title. Defaults to
           None.
 
+  Raises:
+      RuntimeError: trajectories_in contains insufficient elements
+
   Returns:
       go.Figure: A Plotly figure containing the trajectorys and obstacles.
   """
+  # Sanity check input args
+  if len(trajectories_in) < 1:
+    raise RuntimeError(
+      'trajectories_in must contain at least 1 RoverTrajectory object'
+    )
+
   # Assemble title for the frame
   title_text = 'DWA Demo'
   if time_s_in is not None:
@@ -115,20 +125,21 @@ def create_dwa_frame(
   )
 
   # Add shapes for obstacles, only show legend for the first obstacle
-  for idx, obstacle in enumerate(obstacles_in):
-    fig.add_shape(
-      type='circle',
-      xref='x',
-      yref='y',
-      x0=obstacle.position_m[0] - obstacle.radius_m,
-      y0=obstacle.position_m[1] - obstacle.radius_m,
-      x1=obstacle.position_m[0] + obstacle.radius_m,
-      y1=obstacle.position_m[1] + obstacle.radius_m,
-      line=dict(color='slateblue'),
-      fillcolor='darkslateblue',
-      name='Obstacles',
-      showlegend=(idx == 0),
-    )
+  if obstacles_in is not None:
+    for idx, obstacle in enumerate(obstacles_in):
+      fig.add_shape(
+        type='circle',
+        xref='x',
+        yref='y',
+        x0=obstacle.position_m[0] - obstacle.radius_m,
+        y0=obstacle.position_m[1] - obstacle.radius_m,
+        x1=obstacle.position_m[0] + obstacle.radius_m,
+        y1=obstacle.position_m[1] + obstacle.radius_m,
+        line=dict(color='slateblue'),
+        fillcolor='darkslateblue',
+        name='Obstacles',
+        showlegend=(idx == 0),
+      )
 
   # Return the created frame as a figure
   return fig
@@ -171,7 +182,7 @@ class DwaAnimation:
     self,
     trajectories_in: list[RoverTrajectory],
     best_trajectory_in: RoverTrajectory,
-    obstacles_in: list[DwaObstacle],
+    obstacles_in: list[DwaObstacle] | None = None,
     target_pos_m_in: list[float] | None = None,
     time_s_in: float | None = None,
   ) -> None:
@@ -182,23 +193,25 @@ class DwaAnimation:
         trajectories_in (list[RoverTrajectory]): List of all computed
             trajectories.
         best_trajectory_in (RoverTrajectory): The selected best trajectory.
-        obstacles_in (list[DwaObstacle]): List of obstacles to plot.
+      obstacles_in (list[DwaObstacle] | None, optional): List of obstacles to
+          plot. Defaults to None.
         target_pos_m_in (list[float], optional): Target position to plot. If
             not provided, the target will not be shown. Defaults to None.
         time_s_in (float): The current simulation time in seconds. Optional, if
             not provided the time will not be shown in the title. Defaults to
             None.
     """
-    frame = create_dwa_frame(
-      trajectories_in=trajectories_in,
-      best_trajectory_in=best_trajectory_in,
-      obstacles_in=obstacles_in,
-      target_pos_m_in=target_pos_m_in,
-      x_lim_m_in=self.x_lim_m,
-      y_lim_m_in=self.y_lim_m,
-      time_s_in=time_s_in,
+    self.frames.append(
+      create_dwa_frame(
+        trajectories_in=trajectories_in,
+        best_trajectory_in=best_trajectory_in,
+        obstacles_in=obstacles_in,
+        target_pos_m_in=target_pos_m_in,
+        x_lim_m_in=self.x_lim_m,
+        y_lim_m_in=self.y_lim_m,
+        time_s_in=time_s_in,
+      )
     )
-    self.frames.append(frame)
 
   def save_gif(self, filename_in: str, frame_duration_ms: int = 10) -> None:
     """Save the collected frames as a GIF.
