@@ -23,10 +23,10 @@ dwa_demo
 │   │   ├── animation.py        # 📊 Adds a class for visualising the planner
 │   │   └── rover_data.py       # 🤖 Classes related to the rover
 │   ├── tests
-│   │   ├── test_rover_data.py  # 🔍 Unit tests for rover data classes
-│   │   └── test_planner.py     # 💯 Unit tests for the trajectory planner
+│   │   ├── test_planner.py     # 🔍 Unit tests for the trajectory planner
+│   │   └── test_rover_data.py  # 💯 Unit tests for rover data classes
 │   └── util
-│       └── math.py             # 🛠 Utility functions for maths operations
+│       └── math.py             # ➗ Utility functions for maths operations
 ├── pyproject.toml              # 🐍 Project dependencies and build config
 └── README.md                   # 📖 Project documentation
 ```

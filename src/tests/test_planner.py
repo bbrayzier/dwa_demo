@@ -4,9 +4,16 @@ Copyright (c) 2025 Ben Brayzier
 """
 
 # Local imports
-from dwa.rover_data import RoverLimits, RoverPose, RoverState
-from dwa.planner import DwaPlanner, DwaObstacle, DwaConfig, DwaCostWeights
-from tests.test_rover_data import (
+from ..dwa import (
+  RoverLimits,
+  RoverPose,
+  RoverState,
+  DwaPlanner,
+  DwaObstacle,
+  DwaConfig,
+  DwaCostWeights,
+)
+from .test_rover_data import (
   TEST_LIMITS_MAX_VELOCITY_MS,
   TEST_LIMITS_MIN_VELOCITY_MS,
   TEST_LIMITS_MAX_ACCEL_MSS,

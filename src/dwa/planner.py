@@ -10,8 +10,8 @@ from dataclasses import dataclass
 from math import ceil
 
 # Local imports
-from dwa.rover_data import RoverState, RoverTrajectory, RoverLimits
-from util import wrap_to_pi, euclidean_distance
+from .rover_data import RoverState, RoverTrajectory, RoverLimits
+from ..util import wrap_to_pi, euclidean_distance
 
 
 @dataclass

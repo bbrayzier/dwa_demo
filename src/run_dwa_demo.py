@@ -8,18 +8,16 @@ Copyright (c) 2025 Ben Brayzier
 from argparse import ArgumentParser
 
 # Local imports
-from .dwa.rover_data import (
+from .dwa import (
   RoverState,
   RoverLimits,
   RoverPose,
-)
-from .dwa.planner import (
   DwaPlanner,
   DwaConfig,
   DwaCostWeights,
   DwaObstacle,
+  DwaAnimation,
 )
-from .dwa.animation import DwaAnimation
 from .util import euclidean_distance
 
 # ---- ROVER START SETUP ----

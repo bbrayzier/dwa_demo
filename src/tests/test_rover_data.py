@@ -7,7 +7,7 @@ Copyright (c) 2025 Ben Brayzier
 import numpy as np
 
 # Local imports
-from dwa.rover_data import RoverPose, RoverState, RoverTrajectory, RoverLimits
+from ..dwa import RoverPose, RoverState, RoverTrajectory, RoverLimits
 
 # ---- CONSTANTS ----
 # Constants for testing RoverPose
