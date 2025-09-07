@@ -1,0 +1,34 @@
+# Run pytest on pull requests
+#
+# For more on using uv with GitHub Actions see:
+# https://docs.astral.sh/uv/guides/integration/github/
+name: run pytest on pull request
+
+# Only perform action on pull requests for main
+on:
+  pull_request:
+    branches: [ "main" ]
+
+# Set up s job to run pytest
+jobs:
+  run-pytest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          # Install a specific version of uv.
+          version: "0.8.15"
+          # Enable caching between CI runs
+          enable-cache: true
+
+      - name: Install the project
+        # Options as recommended by uv
+        run: uv sync --locked --all-extras --dev
+
+      - name: Run tests
+        # Run pytest on project unit test directory
+        run: uv run pytest src/tests

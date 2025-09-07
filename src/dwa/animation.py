@@ -9,7 +9,7 @@ import gif
 import plotly.graph_objects as go
 
 # Local imports
-from .dwa_planner import DwaObstacle
+from .planner import DwaObstacle
 from .rover_data import RoverTrajectory
 
 

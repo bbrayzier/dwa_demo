@@ -8,18 +8,16 @@ Copyright (c) 2025 Ben Brayzier
 from argparse import ArgumentParser
 
 # Local imports
-from .dwa.rover_data import (
+from .dwa import (
   RoverState,
   RoverLimits,
   RoverPose,
-)
-from .dwa.dwa_planner import (
   DwaPlanner,
   DwaConfig,
   DwaCostWeights,
   DwaObstacle,
+  DwaAnimation,
 )
-from .dwa.dwa_animation import DwaAnimation
 from .util import euclidean_distance
 
 # ---- ROVER START SETUP ----
@@ -108,9 +106,9 @@ def run_dwa_demo(enable_animation_flag_in: bool = False) -> None:
     time_step_s=TIME_STEP_S,
     obstacle_margin_m=OBSTACLE_MARGIN_M,
     cost_weights=DwaCostWeights(
-      heading_cost_factor=HEADING_COST_FACTOR,
-      velocity_cost_factor=VELOCITY_COST_FACTOR,
-      obstacle_cost_factor=OBSTACLE_COST_FACTOR,
+      heading_cost_weight=HEADING_COST_FACTOR,
+      velocity_cost_weight=VELOCITY_COST_FACTOR,
+      obstacle_cost_weight=OBSTACLE_COST_FACTOR,
     ),
   )
 
