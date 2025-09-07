@@ -13,13 +13,13 @@ dwa_demo
 ├── src
 │   ├── run_dwa_demo.py       # Entry point of the demo application
 │   ├── dwa
-│   │   ├── dwa_planner.py    # Implementation of the DWA trajectory planner
-│   │   ├── dwa_animation.py  # Adds a class for visualising the planner
+│   │   ├── planner.py        # Implementation of the DWA trajectory planner
+│   │   ├── animation.py      # Adds a class for visualising the planner
 │   │   └── rover_data.py     # Classes related to the rover
-│   ├── util
-│   │   └── math.py           # Utility functions for mathematical operations
-│   └── tests
-│       └── test_dwa.py       # :warning: Placeholder file for unit tests
+│   ├── tests
+│   │   └── test_dwa.py       # :warning: Placeholder file for unit tests
+│   └── util
+│       └── math.py           # Utility functions for mathematical operations
 ├── pyproject.toml            # Project dependencies and build configuration
 └── README.md                 # Project documentation
 ```

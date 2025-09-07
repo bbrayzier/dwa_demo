@@ -13,13 +13,13 @@ from .dwa.rover_data import (
   RoverLimits,
   RoverPose,
 )
-from .dwa.dwa_planner import (
+from .dwa.planner import (
   DwaPlanner,
   DwaConfig,
   DwaCostWeights,
   DwaObstacle,
 )
-from .dwa.dwa_animation import DwaAnimation
+from .dwa.animation import DwaAnimation
 from .util import euclidean_distance
 
 # ---- ROVER START SETUP ----

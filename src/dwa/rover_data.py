@@ -29,6 +29,14 @@ class RoverPose:
       heading_rad=self.heading_rad,
     )
 
+  def __eq__(self, other: object) -> bool:
+    """Override equality operator for easy comparison of RoverPose objects"""
+    return bool(
+      isinstance(other, RoverPose)
+      and np.allclose(self.position_m, other.position_m)
+      and np.isclose(self.heading_rad, other.heading_rad)
+    )
+
 
 @dataclass
 class RoverState:
