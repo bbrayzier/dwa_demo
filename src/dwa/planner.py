@@ -10,8 +10,8 @@ from dataclasses import dataclass
 from math import ceil
 
 # Local imports
-from .rover_data import RoverState, RoverTrajectory, RoverLimits
-from ..util import wrap_to_pi, euclidean_distance
+from dwa.rover_data import RoverState, RoverTrajectory, RoverLimits
+from util import wrap_to_pi, euclidean_distance
 
 
 @dataclass
@@ -31,15 +31,15 @@ class DwaCostWeights:
 
   # Weighting factor for the heading cost, cost has arbitrary units so this
   # technically has units of 1/radians
-  heading_cost_factor: float
+  heading_cost_weight: float
 
   # Weighting factor for the velocity cost, cost has arbitrary units so this
   # technically has units of 1/(m/s)
-  velocity_cost_factor: float
+  velocity_cost_weight: float
 
   # Weighting factor for the obstacle cost, cost has arbitrary units so this
   # technically has units of 1/metres
-  obstacle_cost_factor: float
+  obstacle_cost_weight: float
 
 
 @dataclass
@@ -279,7 +279,7 @@ class DwaPlanner:
     )
 
     # Return the heading cost, scaled by the heading cost factor
-    return heading_diff_rad * self.dwa_config.cost_weights.heading_cost_factor
+    return heading_diff_rad * self.dwa_config.cost_weights.heading_cost_weight
 
   def _calc_velocity_cost(self, trajectory_in: RoverTrajectory) -> float:
     """Calculate the velocity cost of a trajectory
@@ -294,7 +294,7 @@ class DwaPlanner:
     # and the trajectory's velocity, scaled by the velocity cost factor
     return (
       self.rover_limits.max_velocity_ms - trajectory_in.velocity_ms
-    ) * self.dwa_config.cost_weights.velocity_cost_factor
+    ) * self.dwa_config.cost_weights.velocity_cost_weight
 
   def _calc_obstacle_cost(
     self, trajectory_in: RoverTrajectory, obstacles_in: list[DwaObstacle]
@@ -332,5 +332,5 @@ class DwaPlanner:
     # Return the obstacle cost, scaled by the obstacle cost factor
     return (
       min_distance_to_obstacle_m
-      * self.dwa_config.cost_weights.obstacle_cost_factor
+      * self.dwa_config.cost_weights.obstacle_cost_weight
     )

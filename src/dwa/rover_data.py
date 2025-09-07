@@ -9,7 +9,7 @@ import numpy as np
 from dataclasses import dataclass, field
 
 # Local imports
-from ..util import wrap_to_pi
+from util import wrap_to_pi
 
 
 @dataclass

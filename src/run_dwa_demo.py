@@ -108,9 +108,9 @@ def run_dwa_demo(enable_animation_flag_in: bool = False) -> None:
     time_step_s=TIME_STEP_S,
     obstacle_margin_m=OBSTACLE_MARGIN_M,
     cost_weights=DwaCostWeights(
-      heading_cost_factor=HEADING_COST_FACTOR,
-      velocity_cost_factor=VELOCITY_COST_FACTOR,
-      obstacle_cost_factor=OBSTACLE_COST_FACTOR,
+      heading_cost_weight=HEADING_COST_FACTOR,
+      velocity_cost_weight=VELOCITY_COST_FACTOR,
+      obstacle_cost_weight=OBSTACLE_COST_FACTOR,
     ),
   )
 

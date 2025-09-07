@@ -4,16 +4,12 @@ Copyright (c) 2025 Ben Brayzier
 """
 
 # Generic imports
-import pytest
-
+import numpy as np
 
 # Local imports
-from ..dwa.rover_data import RoverPose, RoverState, RoverTrajectory, RoverLimits
+from dwa.rover_data import RoverPose, RoverState, RoverTrajectory, RoverLimits
 
 # ---- CONSTANTS ----
-# A small epsilon for floating point comparisons
-TEST_EPSILON = 1e-6
-
 # Constants for testing RoverPose
 TEST_POSE_POS_X_M = 1.0
 TEST_POSE_POS_Y_M = 2.0
@@ -69,6 +65,7 @@ def test_rover_state_init():
 
 def test_rover_trajectory_init():
   """Test initialisation of RoverTrajectory class"""
+  # Create a trajectory with two poses
   test_pose_1 = RoverPose(
     position_m=[TEST_POSE_POS_X_M, TEST_POSE_POS_Y_M],
     heading_rad=TEST_POSE_HEADING_RAD,
@@ -82,6 +79,8 @@ def test_rover_trajectory_init():
     velocity_ms=TEST_STATE_VELOCITY_MS,
     yaw_rate_rads=TEST_STATE_YAW_RATE_RADS,
   )
+
+  # Check the trajectory values
   assert test_trajectory.poses[0] == test_pose_1
   assert test_trajectory.poses[1] == test_pose_2
   assert test_trajectory.velocity_ms == TEST_STATE_VELOCITY_MS
@@ -89,7 +88,7 @@ def test_rover_trajectory_init():
 
 
 def test_rover_trajectory_generate():
-  """Test the generate method of the RoverTrajectory class"""
+  """Test the generate() method of the RoverTrajectory class"""
   # Define test inputs
   test_initial_pose = RoverPose(
     position_m=[TEST_POSE_POS_X_M, TEST_POSE_POS_Y_M],
@@ -128,14 +127,30 @@ def test_rover_trajectory_generate():
     TEST_TIME_HOZIRON_S / TEST_TIME_STEP_S
   )
   for idx, pose in enumerate(straight_trajectory.poses):
-    expected_x_m = TEST_POSE_POS_X_M + test_velocity_ms * test_time_step_s * idx
-    expected_y_m = TEST_POSE_POS_Y_M
-    expected_heading_rad = TEST_POSE_HEADING_RAD
-    assert abs(pose.position_m[0] - expected_x_m) < TEST_EPSILON
-    assert abs(pose.position_m[1] - expected_y_m) < TEST_EPSILON
-    assert abs(pose.heading_rad - expected_heading_rad) < TEST_EPSILON
+    # Determine the distance travelled since the start of the trajectory from
+    # the velocity, the time step and the current index
+    dist_travelled_m = test_velocity_ms * (test_time_step_s * (idx + 1))
+
+    # Determine the expected X and Y positions from the initial position, the
+    expected_x_m = test_initial_pose.position_m[0] + (
+      dist_travelled_m * np.cos(test_initial_pose.heading_rad)
+    )
+    expected_y_m = test_initial_pose.position_m[1] + (
+      dist_travelled_m * np.sin(test_initial_pose.heading_rad)
+    )
+
+    # The expected heading is simply the initial heading
+    expected_heading_rad = test_initial_pose.heading_rad
+
+    # Check the position and heading of each generated pose matches the expected
+    # values
+    assert np.isclose(pose.position_m[0], expected_x_m)
+    assert np.isclose(pose.position_m[1], expected_y_m)
+    assert np.isclose(pose.heading_rad, expected_heading_rad)
+
+  # Check velocity and yaw rate of trajectory are set correctly
   assert straight_trajectory.velocity_ms == test_velocity_ms
-  assert straight_trajectory.yaw_rate_rads < TEST_EPSILON
+  assert np.isclose(straight_trajectory.yaw_rate_rads, 0.0)
 
   # Finally test a non-zero velocity and yaw rate produces a moving trajectory
   test_trajectory = RoverTrajectory.generate(
@@ -154,9 +169,9 @@ def test_rover_trajectory_generate():
   for idx, pose in enumerate(test_trajectory.poses):
     # Just check that the poses are changing over time, not their exact values
     if idx > 0:
-      assert abs(pose.position_m[0] - prev_pose.position_m[0]) > TEST_EPSILON
-      assert abs(pose.position_m[1] - prev_pose.position_m[1]) > TEST_EPSILON
-      assert abs(pose.heading_rad - prev_pose.heading_rad) > TEST_EPSILON
+      assert not np.isclose(pose.position_m[0], prev_pose.position_m[0])
+      assert not np.isclose(pose.position_m[1], prev_pose.position_m[1])
+      assert not np.isclose(pose.heading_rad, prev_pose.heading_rad)
 
     # Store the previous pose for the next iteration
     prev_pose = pose.copy()
