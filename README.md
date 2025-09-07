@@ -65,3 +65,7 @@ library and stitches them into an animation using the
 **Note:** this will significantly increase execution time of the demo.
 
 ![DWA Demo](assets/dwa_demo.gif)
+
+## License
+
+See the [LICENSE](LICENSE.md) file for license rights and limitations ([MIT](https://opensource.org/license/MIT)).
