@@ -14,6 +14,7 @@ dwa_demo
 │   ├── run_dwa_demo.py       # Entry point of the demo application
 │   ├── dwa
 │   │   ├── dwa_planner.py    # Implementation of the DWA trajectory planner
+│   │   ├── dwa_animation.py  # Adds a class for visualising the planner
 │   │   └── rover_data.py     # Classes related to the rover
 │   ├── util
 │   │   └── math.py           # Utility functions for mathematical operations
@@ -28,26 +29,39 @@ dwa_demo
 First make sure you have [uv](https://docs.astral.sh/uv/getting-started/installation/)
 installed.
 
-Then to set up the project, clone the repository and install the required
-dependencies:
+Then clone the repository and get uv to set up the virtual environment and
+install the required dependencies:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/bbrayzier/dwa_demo.git
 cd dwa_demo
 uv sync
 ```
 
 ## Usage
 
-To run the trajectory planner, execute the following command:
+To run the trajectory planner, simply execute the following command:
 
 ```bash
 uv run -m src.run_dwa_demo
 ```
 
-## Examples
+To change the characteristics of the rover, the planner or the target/obstacles
+modify the constants at the top of [`run_dwa_demo.py`](src/run_dwa_demo.py).
 
-Running the project in its current state will generate an animation like
-this:
+## Animation
+
+Running the project with the `-a` flag will generate an animation in the
+`assets/` directory like that shown below.
+
+```bash
+uv run -m src.run_dwa_demo -a
+```
+
+This feature generates figures using the [plotly](https://plotly.com/python/)
+library and stitches them into an animation using the
+[gif](https://github.com/maxhumber/gif/tree/v3.0.0) library.
+
+**Note:** this will significantly increase execution time of the demo.
 
 ![DWA Demo](assets/dwa_demo.gif)

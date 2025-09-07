@@ -74,8 +74,12 @@ def run_dwa_demo(enable_animation_flag_in: bool = False) -> None:
   """Run a simple DWA demo, navigating a rover to a target position while
   avoiding obstacles.
 
-  The demo generates a GIF showing the rover's planned trajectories at each time
-  step.
+  Additionally the demo can generate an animation showing the rover's
+  planned trajectories at each time step.
+
+  Args:
+    enable_animation_flag_in (bool, optional): A flag to enable animation
+      generation which is saved as a GIF. Defaults to False.
   """
   # ---- VISUALISATION SETUP ----
   if enable_animation_flag_in:
