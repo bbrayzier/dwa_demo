@@ -14,7 +14,7 @@ from .dwa import (
   RoverPose,
   DwaPlanner,
   DwaConfig,
-  DwaCostWeights,
+  DwaWeights,
   DwaObstacle,
   DwaAnimation,
 )
@@ -41,10 +41,10 @@ TIME_HORIZON_S = 10.0
 TIME_STEP_S = 1.0
 OBSTACLE_MARGIN_M = 0.3
 
-# Set DWA cost function weights
-HEADING_COST_FACTOR = 1.0
-VELOCITY_COST_FACTOR = 50.0
-OBSTACLE_COST_FACTOR = 10.0
+# Set DWA objective function weights
+HEADING_WEIGHT = 1.0
+VELOCITY_WEIGHT = 0.2
+OBSTACLE_WEIGHT = 0.1
 
 # ---- TARGET AND OBSTACLES SETUP ----
 # Set target position and tolerance
@@ -82,7 +82,7 @@ def run_dwa_demo(enable_animation_flag_in: bool = False) -> None:
   # ---- VISUALISATION SETUP ----
   if enable_animation_flag_in:
     # Set up list of Plotly frames for animation
-    animation = DwaAnimation(
+    dwa_animation = DwaAnimation(
       x_lim_m_in=ANIMATION_X_LIMS_M,
       y_lim_m_in=ANIMATION_Y_LIMS_M,
     )
@@ -105,10 +105,10 @@ def run_dwa_demo(enable_animation_flag_in: bool = False) -> None:
     time_horizon_s=TIME_HORIZON_S,
     time_step_s=TIME_STEP_S,
     obstacle_margin_m=OBSTACLE_MARGIN_M,
-    cost_weights=DwaCostWeights(
-      heading_cost_weight=HEADING_COST_FACTOR,
-      velocity_cost_weight=VELOCITY_COST_FACTOR,
-      obstacle_cost_weight=OBSTACLE_COST_FACTOR,
+    weight_factors=DwaWeights(
+      heading_weight=HEADING_WEIGHT,
+      velocity_weight=VELOCITY_WEIGHT,
+      obstacle_weight=OBSTACLE_WEIGHT,
     ),
   )
 
@@ -145,7 +145,7 @@ def run_dwa_demo(enable_animation_flag_in: bool = False) -> None:
     trajectories = dwa_planner.compute_trajectories(rover_state)
 
     # Select the best trajectory
-    best_trajectory = dwa_planner.select_best_trajectory(
+    best_trajectory, trajectory_scores = dwa_planner.select_best_trajectory(
       trajectories_in=trajectories,
       target_pos_m_in=TARGET_POSITION_M,
       obstacles_in=OBSTACLE_LIST,
@@ -161,7 +161,7 @@ def run_dwa_demo(enable_animation_flag_in: bool = False) -> None:
 
     if enable_animation_flag_in:
       # Add a frame for the current time step to the animation
-      animation.add_frame(
+      dwa_animation.add_frame(
         trajectories_in=trajectories,
         best_trajectory_in=best_trajectory,
         obstacles_in=OBSTACLE_LIST,
@@ -194,7 +194,7 @@ def run_dwa_demo(enable_animation_flag_in: bool = False) -> None:
 
   if enable_animation_flag_in:
     # Save the animation as a GIF
-    animation.save_gif('assets/dwa_demo.gif')
+    dwa_animation.save_gif('assets/dwa_demo.gif')
 
 
 # Handle direct execution of this script

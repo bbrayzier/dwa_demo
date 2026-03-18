@@ -11,7 +11,7 @@ from ..dwa import (
   DwaPlanner,
   DwaObstacle,
   DwaConfig,
-  DwaCostWeights,
+  DwaWeights,
 )
 from .test_rover_data import (
   TEST_LIMITS_MAX_VELOCITY_MS,
@@ -34,9 +34,9 @@ TEST_OBSTACLE_Y_M = 2.0
 TEST_OBSTACLE_RADIUS_M = 0.5
 
 # Constants for testing DWA weights
-TEST_HEADING_COST_WEIGHT = 1.0
-TEST_VELOCITY_COST_WEIGHT = 10.0
-TEST_OBSTACLE_COST_WEIGHT = 100.0
+TEST_HEADING_WEIGHT = 1.0
+TEST_VELOCITY_WEIGHT = 0.1
+TEST_OBSTACLE_WEIGHT = 0.01
 
 # Constants for testing DWA config
 TEST_CONFIG_VELOCITY_RES_MS = 0.1
@@ -61,24 +61,24 @@ def test_dwa_obstacle_init():
   assert test_obstacle.radius_m == TEST_OBSTACLE_RADIUS_M
 
 
-def test_dwa_cost_weights_init():
-  """Test initialisation of DwaCostWeights class"""
-  test_weights = DwaCostWeights(
-    heading_cost_weight=TEST_HEADING_COST_WEIGHT,
-    velocity_cost_weight=TEST_VELOCITY_COST_WEIGHT,
-    obstacle_cost_weight=TEST_OBSTACLE_COST_WEIGHT,
+def test_dwa_weights_init():
+  """Test initialisation of DwaWeights class"""
+  test_weights = DwaWeights(
+    heading_weight=TEST_HEADING_WEIGHT,
+    velocity_weight=TEST_VELOCITY_WEIGHT,
+    obstacle_weight=TEST_OBSTACLE_WEIGHT,
   )
-  assert test_weights.heading_cost_weight == TEST_HEADING_COST_WEIGHT
-  assert test_weights.velocity_cost_weight == TEST_VELOCITY_COST_WEIGHT
-  assert test_weights.obstacle_cost_weight == TEST_OBSTACLE_COST_WEIGHT
+  assert test_weights.heading_weight == TEST_HEADING_WEIGHT
+  assert test_weights.velocity_weight == TEST_VELOCITY_WEIGHT
+  assert test_weights.obstacle_weight == TEST_OBSTACLE_WEIGHT
 
 
 def test_dwa_config_init():
   """Test initialisation of DwaConfig class"""
-  test_weights = DwaCostWeights(
-    heading_cost_weight=TEST_HEADING_COST_WEIGHT,
-    velocity_cost_weight=TEST_VELOCITY_COST_WEIGHT,
-    obstacle_cost_weight=TEST_OBSTACLE_COST_WEIGHT,
+  test_weights = DwaWeights(
+    heading_weight=TEST_HEADING_WEIGHT,
+    velocity_weight=TEST_VELOCITY_WEIGHT,
+    obstacle_weight=TEST_OBSTACLE_WEIGHT,
   )
   test_config = DwaConfig(
     velocity_resolution_ms=TEST_CONFIG_VELOCITY_RES_MS,
@@ -86,23 +86,23 @@ def test_dwa_config_init():
     time_horizon_s=TEST_CONFIG_TIME_HORIZON_S,
     time_step_s=TEST_CONFIG_TIME_STEP_S,
     obstacle_margin_m=TEST_CONFIG_OBSTACLE_MARGIN_M,
-    cost_weights=test_weights,
+    weight_factors=test_weights,
   )
   assert test_config.velocity_resolution_ms == TEST_CONFIG_VELOCITY_RES_MS
   assert test_config.yaw_rate_resolution_rads == TEST_CONFIG_YAW_RATE_RES_RADS
   assert test_config.time_horizon_s == TEST_CONFIG_TIME_HORIZON_S
   assert test_config.time_step_s == TEST_CONFIG_TIME_STEP_S
   assert test_config.obstacle_margin_m == TEST_CONFIG_OBSTACLE_MARGIN_M
-  assert test_config.cost_weights == test_weights
+  assert test_config.weight_factors == test_weights
 
 
 def test_dwa_planner_init():
   """Test initialisation of DwaPlanner class"""
   # Create a config and rover limits for the planner
-  test_weights = DwaCostWeights(
-    heading_cost_weight=TEST_HEADING_COST_WEIGHT,
-    velocity_cost_weight=TEST_VELOCITY_COST_WEIGHT,
-    obstacle_cost_weight=TEST_OBSTACLE_COST_WEIGHT,
+  test_weights = DwaWeights(
+    heading_weight=TEST_HEADING_WEIGHT,
+    velocity_weight=TEST_VELOCITY_WEIGHT,
+    obstacle_weight=TEST_OBSTACLE_WEIGHT,
   )
   test_config = DwaConfig(
     velocity_resolution_ms=TEST_CONFIG_VELOCITY_RES_MS,
@@ -110,7 +110,7 @@ def test_dwa_planner_init():
     time_horizon_s=TEST_CONFIG_TIME_HORIZON_S,
     time_step_s=TEST_CONFIG_TIME_STEP_S,
     obstacle_margin_m=TEST_CONFIG_OBSTACLE_MARGIN_M,
-    cost_weights=test_weights,
+    weight_factors=test_weights,
   )
   test_rover_limits = RoverLimits(
     min_velocity_ms=TEST_LIMITS_MIN_VELOCITY_MS,
@@ -132,10 +132,10 @@ def test_dwa_planner_init():
 def test_dwa_planner_compute_trajectories():
   """Test the compute_trajectories() method of the DwaPlanner class"""
   # Create a config and rover limits for the planner
-  test_weights = DwaCostWeights(
-    heading_cost_weight=TEST_HEADING_COST_WEIGHT,
-    velocity_cost_weight=TEST_VELOCITY_COST_WEIGHT,
-    obstacle_cost_weight=TEST_OBSTACLE_COST_WEIGHT,
+  test_weights = DwaWeights(
+    heading_weight=TEST_HEADING_WEIGHT,
+    velocity_weight=TEST_VELOCITY_WEIGHT,
+    obstacle_weight=TEST_OBSTACLE_WEIGHT,
   )
   test_config = DwaConfig(
     velocity_resolution_ms=TEST_CONFIG_VELOCITY_RES_MS,
@@ -143,7 +143,7 @@ def test_dwa_planner_compute_trajectories():
     time_horizon_s=TEST_CONFIG_TIME_HORIZON_S,
     time_step_s=TEST_CONFIG_TIME_STEP_S,
     obstacle_margin_m=TEST_CONFIG_OBSTACLE_MARGIN_M,
-    cost_weights=test_weights,
+    weight_factors=test_weights,
   )
   test_rover_limits = RoverLimits(
     min_velocity_ms=TEST_LIMITS_MIN_VELOCITY_MS,
@@ -194,10 +194,10 @@ def test_dwa_planner_compute_trajectories():
 def test_dwa_planner_select_best_trajectory():
   """Test the select_best_trajectory() method of the DwaPlanner class"""
   # Create a config and rover limits for the planner
-  test_weights = DwaCostWeights(
-    heading_cost_weight=TEST_HEADING_COST_WEIGHT,
-    velocity_cost_weight=TEST_VELOCITY_COST_WEIGHT,
-    obstacle_cost_weight=TEST_OBSTACLE_COST_WEIGHT,
+  test_weights = DwaWeights(
+    heading_weight=TEST_HEADING_WEIGHT,
+    velocity_weight=TEST_VELOCITY_WEIGHT,
+    obstacle_weight=TEST_OBSTACLE_WEIGHT,
   )
   test_config = DwaConfig(
     velocity_resolution_ms=TEST_CONFIG_VELOCITY_RES_MS,
@@ -205,7 +205,7 @@ def test_dwa_planner_select_best_trajectory():
     time_horizon_s=TEST_CONFIG_TIME_HORIZON_S,
     time_step_s=TEST_CONFIG_TIME_STEP_S,
     obstacle_margin_m=TEST_CONFIG_OBSTACLE_MARGIN_M,
-    cost_weights=test_weights,
+    weight_factors=test_weights,
   )
   test_rover_limits = RoverLimits(
     min_velocity_ms=TEST_LIMITS_MIN_VELOCITY_MS,
