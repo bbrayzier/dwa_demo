@@ -14,6 +14,13 @@ from .rover_data import RoverState, RoverTrajectory, RoverLimits
 from ..util import wrap_to_pi, euclidean_distance
 
 
+# ---- CONSTANTS ----
+# Define the length and resolution of the arc used for obstacle scanning, this
+# is used to project forwards to check for obstacles along the rover trajectory
+OBSTACLE_SCAN_ARC_LENGTH_M = 10.0
+OBSTACLE_SCAN_ARC_RESOLUTION_M = 0.05
+
+
 @dataclass
 class DwaObstacle:
   """Class to represent an obstacle in the environment for DWA planning"""
@@ -26,20 +33,20 @@ class DwaObstacle:
 
 
 @dataclass
-class DwaCostWeights:
-  """Class to provide weighting factors to the DWA costing functions"""
+class DwaWeights:
+  """Class to provide weighting factors to the DWA objective function"""
 
-  # Weighting factor for the heading cost, cost has arbitrary units so this
-  # technically has units of 1/radians
-  heading_cost_weight: float
+  # Objective function weighting factor for the heading, the objective function
+  # is unitless so this technically has units of 1/radians
+  heading_weight: float
 
-  # Weighting factor for the velocity cost, cost has arbitrary units so this
-  # technically has units of 1/(m/s)
-  velocity_cost_weight: float
+  # Objective function weighting factor for the velocity, the objective function
+  # is unitless so this technically has units of 1/(metres/second)
+  velocity_weight: float
 
-  # Weighting factor for the obstacle cost, cost has arbitrary units so this
-  # technically has units of 1/metres
-  obstacle_cost_weight: float
+  # Objective function weighting factor for the obstacle clearance, the
+  # objective function is unitless so this technically has units of 1/metres
+  obstacle_weight: float
 
 
 @dataclass
@@ -62,8 +69,9 @@ class DwaConfig:
   # than this will be considered invalid
   obstacle_margin_m: float
 
-  # Cost weights for the different cost functions
-  cost_weights: DwaCostWeights
+  # Weighting factors for the elements of the DWA objective function, used to
+  # score trajectories
+  weight_factors: DwaWeights
 
 
 class DwaPlanner:
@@ -88,6 +96,15 @@ class DwaPlanner:
     """
     self.dwa_config = dwa_config_in
     self.rover_limits = rover_limits_in
+
+    self.reset_best_scores()
+
+  def reset_best_scores(self):
+    """Reset the best scores for trajectory evaluation"""
+    self.best_score = -float('inf')
+    self.best_heading_score = -float('inf')
+    self.best_velocity_score = -float('inf')
+    self.best_obstacle_score = -float('inf')
 
   def compute_trajectories(
     self, rover_state_in: RoverState
@@ -175,9 +192,9 @@ class DwaPlanner:
   ) -> RoverTrajectory:
     """Select the best trajectory from a list of possible trajectories
 
-    Evaluates each trajectory using a scoring function that considers
-    heading, velocity and obstacle costs, and returns the trajectory with the
-    lowest cost.
+    Evaluates each trajectory using an objective function that considers
+    heading, velocity and obstacle clearance, and returns the trajectory with
+    the highest score.
 
     Args:
         trajectories_in (list[RoverTrajectory]): List of possible rover
@@ -189,6 +206,7 @@ class DwaPlanner:
     Raises:
         ValueError: If no trajectories are provided or target position is
             invalid.
+        RuntimeError: If no valid trajectories are found.
 
     Returns:
         RoverTrajectory: The best trajectory based on the scoring function.
@@ -199,18 +217,37 @@ class DwaPlanner:
     elif len(target_pos_m_in) < 2:
       raise ValueError('Target position must be a list of [x, y] coordinates')
 
-    # Evaluate the cost of each trajectory
-    trajectory_costs = [
-      self._evaluate_trajectory(
+    # Reset the best scores before evaluating trajectories
+    self.reset_best_scores()
+
+    # Evaluate the score of each trajectory
+    for trajectory in trajectories_in:
+      trajectory.score = self._evaluate_trajectory(
         trajectory,
         target_pos_m_in,
         obstacles_in,
       )
-      for trajectory in trajectories_in
-    ]
 
-    # Return the trajectory with the lowest cost
-    return trajectories_in[np.argmin(trajectory_costs)]
+    # Print the best score and its components for debugging/analysis purposes
+    print(
+      f'Best trajectory score: {self.best_score:.2f} '
+      f'(Heading: {self.best_heading_score:.2f}, '
+      f'Velocity: {self.best_velocity_score:.2f}, '
+      f'Obstacle: {self.best_obstacle_score:.2f})'
+    )
+
+    # Get the scores of all trajectories in a separate list
+    trajectory_scores = [trajectory.score for trajectory in trajectories_in]
+
+    # Sanity check a valid trajectory was found (i.e. at least one trajectory
+    # has a positive score)
+    if not any(score > 0.0 for score in trajectory_scores):
+      raise RuntimeError(
+        'No valid trajectories found, all trajectories have a negative score'
+      )
+
+    # Return the trajectory with the highest score
+    return trajectories_in[np.argmax(trajectory_scores)]
 
   def _evaluate_trajectory(
     self,
@@ -218,49 +255,62 @@ class DwaPlanner:
     target_pos_m_in: list[float],
     obstacles_in: list[DwaObstacle] | None = None,
   ) -> float:
-    """Evaluate a trajectory based on heading, velocity and obstacle costs
+    """Evaluates a trajectory based on heading, velocity and obstacle clearance
+
+    This calculates the objective function of the DWA algorithm.
 
     Args:
         trajectory (RoverTrajectory): The trajectory to evaluate.
         target_pos_m_in (list[float]): The target position [x, y].
         obstacles_in (list[DwaObstacle] | None, optional): List of obstacles in
-            the environment. Obstacle cost is skipped if no obstacles are
+            the environment. Obstacle clearance is skipped if no obstacles are
             provided. Defaults to None.
 
     Returns:
-        float: The total cost of the trajectory (lower is better).
+        float: The total score of the trajectory (higher is better).
     """
-    # Calculate individual costs:
-    # - Heading cost: How well the trajectory aligns with the target
-    # - Velocity cost: How fast the trajectory is (prefer faster)
-    # - Obstacle cost: How close the trajectory comes to obstacles (prefer
-    #   further away, infinite if collision, skip if no obstacles)
-    heading_cost = self._calc_heading_cost(trajectory, target_pos_m_in)
-    velocity_cost = self._calc_velocity_cost(trajectory)
+    # Calculate scores for each component of the objective function:
+    # - Heading score: How well the trajectory aligns with the target
+    # - Velocity score: How fast the trajectory is (prefer faster)
+    # - Obstacle score: How close the trajectory comes to obstacles (prefer
+    #   further away, negative if collision, skip if no obstacles)
+    heading_score = self._calc_heading_score(trajectory, target_pos_m_in)
+    velocity_score = self._calc_velocity_score(trajectory)
     if obstacles_in is None or len(obstacles_in) == 0:
-      obstacle_cost = 0.0
+      obstacle_score = 0.0
     else:
-      obstacle_cost = self._calc_obstacle_cost(trajectory, obstacles_in)
+      obstacle_score = self._calc_obstacle_score(trajectory, obstacles_in)
 
-    # If the obstacle cost is infinite, return infinite cost (invalid
+    # If the obstacle score is negative, return negative infinity (invalid
     # trajectory)
-    if obstacle_cost == float('inf'):
-      return float('inf')
+    if obstacle_score < 0:
+      return -float('inf')
 
-    # Combine costs into a single score (lower is better) and return it
-    return heading_cost + velocity_cost + obstacle_cost
+    # Combine the elements of the objective function into a single score (higher
+    # is better)
+    total_score = heading_score + velocity_score + obstacle_score
 
-  def _calc_heading_cost(
+    # If this is the best score we've seen, store it and the components of the
+    # score for debugging/analysis purposes
+    if total_score > self.best_score:
+      self.best_score = total_score
+      self.best_heading_score = heading_score
+      self.best_velocity_score = velocity_score
+      self.best_obstacle_score = obstacle_score
+
+    return total_score
+
+  def _calc_heading_score(
     self, trajectory_in: RoverTrajectory, target_pos_m_in: list[float]
   ) -> float:
-    """Calculate the heading cost of a trajectory
+    """Calculate the heading score of a trajectory
 
     Args:
         trajectory_in (RoverTrajectory): The trajectory to evaluate.
         target_pos_m_in (list): The target position [x, y].
 
     Returns:
-        float: The heading cost (lower is better).
+        float: The heading score (higher is better).
     """
     # Get the final pose of the trajectory
     final_pose = trajectory_in.poses[-1]
@@ -278,43 +328,59 @@ class DwaPlanner:
       wrap_to_pi(final_pose.heading_rad - angle_to_target_rad)
     )
 
-    # Return the heading cost, scaled by the heading cost factor
-    return heading_diff_rad * self.dwa_config.cost_weights.heading_cost_weight
+    # Return the heading score, this is calculated as 180 degrees minus the
+    # heading difference, scaled by the heading weight factor
+    return (
+      np.pi - heading_diff_rad
+    ) * self.dwa_config.weight_factors.heading_weight
 
-  def _calc_velocity_cost(self, trajectory_in: RoverTrajectory) -> float:
-    """Calculate the velocity cost of a trajectory
+  def _calc_velocity_score(self, trajectory_in: RoverTrajectory) -> float:
+    """Calculate the velocity score of a trajectory
 
     Args:
         trajectory_in (RoverTrajectory): The trajectory to evaluate.
 
     Returns:
-        float: The velocity cost (lower is better).
+        float: The velocity score (higher is better).
     """
-    # The velocity cost is simply the difference between the maximum velocity
-    # and the trajectory's velocity, scaled by the velocity cost factor
+    # The velocity score is simply the trajectory's velocity, multiplied by the
+    # velocity weight factor
     return (
-      self.rover_limits.max_velocity_ms - trajectory_in.velocity_ms
-    ) * self.dwa_config.cost_weights.velocity_cost_weight
+      trajectory_in.velocity_ms * self.dwa_config.weight_factors.velocity_weight
+    )
 
-  def _calc_obstacle_cost(
+  def _calc_obstacle_score(
     self, trajectory_in: RoverTrajectory, obstacles_in: list[DwaObstacle]
   ) -> float:
-    """Calculate the obstacle cost of a trajectory
+    """Calculate the obstacle clearance score of a trajectory
 
     Args:
         trajectory_in (RoverTrajectory): The trajectory to evaluate.
         obstacles_in (list[DwaObstacle]): List of obstacles in the environment.
 
     Returns:
-        float: The obstacle cost (lower is better, infinite if collision).
+        float: The obstacle clearance score (higher is better, negative if
+            collision).
     """
     # Initialise the minimum distance to an obstacle as infinity
     min_distance_to_obstacle_m = float('inf')
 
-    # Check each pose in the trajectory against each obstacle
-    for pose in trajectory_in.poses:
+    # Create a generic arc along this trajectory (independent of the speed and
+    # yaw rate) to check for obstacles along
+    arc = RoverTrajectory.create_arc(
+      initial_rover_pose_in=trajectory_in.poses[0],
+      curvature_radm_in=trajectory_in.get_curvature(),
+      arc_resolution_m_in=OBSTACLE_SCAN_ARC_RESOLUTION_M,
+      num_steps_in=int(
+        OBSTACLE_SCAN_ARC_LENGTH_M / OBSTACLE_SCAN_ARC_RESOLUTION_M
+      ),
+    )
+
+    # Check each pose in the arc against each obstacle
+    for pose in arc:
       for obstacle in obstacles_in:
-        # Calculate the Euclidean distance from the pose to the obstacle
+        # Calculate the Euclidean distance from the pose to the obstacle, note
+        # this can be negative if the pose is within the obstacle radius
         distance_m = (
           euclidean_distance(pose.position_m, obstacle.position_m)
           - obstacle.radius_m
@@ -324,13 +390,13 @@ class DwaPlanner:
         if distance_m < min_distance_to_obstacle_m:
           min_distance_to_obstacle_m = distance_m
 
-    # If the minimum distance is less than the obstacle margin, return infinite
-    # cost (collision)
-    if min_distance_to_obstacle_m < self.dwa_config.obstacle_margin_m:
-      return float('inf')
+    # Subtract the obstacle margin from the minimum distance to get the
+    # effective distance to the obstacle, this means that trajectories that come
+    # within the obstacle margin will be considered as a collision
+    min_distance_to_obstacle_m -= self.dwa_config.obstacle_margin_m
 
-    # Return the obstacle cost, scaled by the obstacle cost factor
+    # Return the obstacle clearance score, scaled by the obstacle weight factor
     return (
       min_distance_to_obstacle_m
-      * self.dwa_config.cost_weights.obstacle_cost_weight
+      * self.dwa_config.weight_factors.obstacle_weight
     )
