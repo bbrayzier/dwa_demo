@@ -72,7 +72,14 @@ library and stitches them into an animation using the
 
 **Note:** this will significantly increase execution time of the demo.
 
+This produces a top down animation showing the planner working in X-Y space:
+
 ![DWA Demo](assets/dwa_demo.gif)
+
+Additionally an animation displaying a heatmap of the scores for each valid
+trajectory in the dynamic window is produced:
+
+![DWA Score](assets/dwa_score.gif)
 
 ## License
 

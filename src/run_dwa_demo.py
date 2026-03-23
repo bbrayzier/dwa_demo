@@ -43,7 +43,7 @@ OBSTACLE_MARGIN_M = 0.3
 
 # Set DWA objective function weights
 HEADING_WEIGHT = 1.0
-VELOCITY_WEIGHT = 0.2
+VELOCITY_WEIGHT = 2.0
 OBSTACLE_WEIGHT = 0.1
 
 # ---- TARGET AND OBSTACLES SETUP ----
@@ -64,8 +64,11 @@ OBSTACLE_LIST = [
 SIM_TIME_LIMIT_S = 300.0
 
 # Animation axis limits
-ANIMATION_X_LIMS_M = (-7.5, 12.5)
-ANIMATION_Y_LIMS_M = (-17.5, 2.5)
+ANIMATION_DEMO_X_LIMS_M = (-7.5, 12.5)
+ANIMATION_DEMO_Y_LIMS_M = (-17.5, 2.5)
+ANIMATION_SCORE_X_LIMS_MS = (0.05, 0.35)
+ANIMATION_SCORE_Y_LIMS_RADS = (-0.2, 0.2)
+ANIMATION_SCORE_C_LIMS = (-1.0, 5.0)
 
 
 def run_dwa_demo(enable_animation_flag_in: bool = False) -> None:
@@ -83,8 +86,11 @@ def run_dwa_demo(enable_animation_flag_in: bool = False) -> None:
   if enable_animation_flag_in:
     # Set up list of Plotly frames for animation
     dwa_animation = DwaAnimation(
-      x_lim_m_in=ANIMATION_X_LIMS_M,
-      y_lim_m_in=ANIMATION_Y_LIMS_M,
+      demo_x_lim_m_in=ANIMATION_DEMO_X_LIMS_M,
+      demo_y_lim_m_in=ANIMATION_DEMO_Y_LIMS_M,
+      score_x_lim_ms_in=ANIMATION_SCORE_X_LIMS_MS,
+      score_y_lim_rads_in=ANIMATION_SCORE_Y_LIMS_RADS,
+      score_c_lim_in=ANIMATION_SCORE_C_LIMS,
     )
 
   # ---- ROVER SETUP ----
@@ -145,7 +151,7 @@ def run_dwa_demo(enable_animation_flag_in: bool = False) -> None:
     trajectories = dwa_planner.compute_trajectories(rover_state)
 
     # Select the best trajectory
-    best_trajectory, trajectory_scores = dwa_planner.select_best_trajectory(
+    best_trajectory = dwa_planner.select_best_trajectory(
       trajectories_in=trajectories,
       target_pos_m_in=TARGET_POSITION_M,
       obstacles_in=OBSTACLE_LIST,
@@ -191,10 +197,10 @@ def run_dwa_demo(enable_animation_flag_in: bool = False) -> None:
       target_reached = True
 
   # ---- GIF CREATION ----
-
   if enable_animation_flag_in:
-    # Save the animation as a GIF
-    dwa_animation.save_gif('assets/dwa_demo.gif')
+    # Save the animations as GIFs
+    dwa_animation.save_demo_gif('assets/dwa_demo.gif')
+    dwa_animation.save_score_gif('assets/dwa_score.gif')
 
 
 # Handle direct execution of this script

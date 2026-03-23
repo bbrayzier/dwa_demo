@@ -14,6 +14,13 @@ from .rover_data import RoverState, RoverTrajectory, RoverLimits
 from ..util import wrap_to_pi, euclidean_distance
 
 
+# ---- CONSTANTS ----
+# Define the length and resolution of the arc used for obstacle scanning, this
+# is used to project forwards to check for obstacles along the rover trajectory
+OBSTACLE_SCAN_ARC_LENGTH_M = 10.0
+OBSTACLE_SCAN_ARC_RESOLUTION_M = 0.05
+
+
 @dataclass
 class DwaObstacle:
   """Class to represent an obstacle in the environment for DWA planning"""
@@ -89,6 +96,15 @@ class DwaPlanner:
     """
     self.dwa_config = dwa_config_in
     self.rover_limits = rover_limits_in
+
+    self.reset_best_scores()
+
+  def reset_best_scores(self):
+    """Reset the best scores for trajectory evaluation"""
+    self.best_score = -float('inf')
+    self.best_heading_score = -float('inf')
+    self.best_velocity_score = -float('inf')
+    self.best_obstacle_score = -float('inf')
 
   def compute_trajectories(
     self, rover_state_in: RoverState
@@ -173,7 +189,7 @@ class DwaPlanner:
     trajectories_in: list[RoverTrajectory],
     target_pos_m_in: list[float],
     obstacles_in: list[DwaObstacle] | None = None,
-  ) -> tuple[RoverTrajectory, list[float]]:
+  ) -> RoverTrajectory:
     """Select the best trajectory from a list of possible trajectories
 
     Evaluates each trajectory using an objective function that considers
@@ -193,8 +209,7 @@ class DwaPlanner:
         RuntimeError: If no valid trajectories are found.
 
     Returns:
-        tuple[RoverTrajectory, list[float]]: The best trajectory based on the
-            scoring function and the list of trajectory scores.
+        RoverTrajectory: The best trajectory based on the scoring function.
     """
     # Sanity check inputs
     if len(trajectories_in) == 0:
@@ -202,25 +217,37 @@ class DwaPlanner:
     elif len(target_pos_m_in) < 2:
       raise ValueError('Target position must be a list of [x, y] coordinates')
 
+    # Reset the best scores before evaluating trajectories
+    self.reset_best_scores()
+
     # Evaluate the score of each trajectory
-    trajectory_scores = [
-      self._evaluate_trajectory(
+    for trajectory in trajectories_in:
+      trajectory.score = self._evaluate_trajectory(
         trajectory,
         target_pos_m_in,
         obstacles_in,
       )
-      for trajectory in trajectories_in
-    ]
+
+    # Print the best score and its components for debugging/analysis purposes
+    print(
+      f'Best trajectory score: {self.best_score:.2f} '
+      f'(Heading: {self.best_heading_score:.2f}, '
+      f'Velocity: {self.best_velocity_score:.2f}, '
+      f'Obstacle: {self.best_obstacle_score:.2f})'
+    )
+
+    # Get the scores of all trajectories in a separate list
+    trajectory_scores = [trajectory.score for trajectory in trajectories_in]
 
     # Sanity check a valid trajectory was found (i.e. at least one trajectory
     # has a positive score)
-    if not any(trajectory_scores) > 0:
+    if not any(score > 0.0 for score in trajectory_scores):
       raise RuntimeError(
         'No valid trajectories found, all trajectories have a negative score'
       )
 
     # Return the trajectory with the highest score
-    return trajectories_in[np.argmax(trajectory_scores)], trajectory_scores
+    return trajectories_in[np.argmax(trajectory_scores)]
 
   def _evaluate_trajectory(
     self,
@@ -260,8 +287,18 @@ class DwaPlanner:
       return -float('inf')
 
     # Combine the elements of the objective function into a single score (higher
-    # is better) and return it
-    return heading_score + velocity_score + obstacle_score
+    # is better)
+    total_score = heading_score + velocity_score + obstacle_score
+
+    # If this is the best score we've seen, store it and the components of the
+    # score for debugging/analysis purposes
+    if total_score > self.best_score:
+      self.best_score = total_score
+      self.best_heading_score = heading_score
+      self.best_velocity_score = velocity_score
+      self.best_obstacle_score = obstacle_score
+
+    return total_score
 
   def _calc_heading_score(
     self, trajectory_in: RoverTrajectory, target_pos_m_in: list[float]
@@ -306,7 +343,8 @@ class DwaPlanner:
     Returns:
         float: The velocity score (higher is better).
     """
-    # The velocity score is simply the trajectory's velocity, multiplied by the velocity weight factor
+    # The velocity score is simply the trajectory's velocity, multiplied by the
+    # velocity weight factor
     return (
       trajectory_in.velocity_ms * self.dwa_config.weight_factors.velocity_weight
     )
@@ -327,8 +365,19 @@ class DwaPlanner:
     # Initialise the minimum distance to an obstacle as infinity
     min_distance_to_obstacle_m = float('inf')
 
-    # Check each pose in the trajectory against each obstacle
-    for pose in trajectory_in.poses:
+    # Create a generic arc along this trajectory (independent of the speed and
+    # yaw rate) to check for obstacles along
+    arc = RoverTrajectory.create_arc(
+      initial_rover_pose_in=trajectory_in.poses[0],
+      curvature_radm_in=trajectory_in.get_curvature(),
+      arc_resolution_m_in=OBSTACLE_SCAN_ARC_RESOLUTION_M,
+      num_steps_in=int(
+        OBSTACLE_SCAN_ARC_LENGTH_M / OBSTACLE_SCAN_ARC_RESOLUTION_M
+      ),
+    )
+
+    # Check each pose in the arc against each obstacle
+    for pose in arc:
       for obstacle in obstacles_in:
         # Calculate the Euclidean distance from the pose to the obstacle, note
         # this can be negative if the pose is within the obstacle radius
